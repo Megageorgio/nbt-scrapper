@@ -1,0 +1,3 @@
+[submodule "nbt-studio"]
+	path = nbt-studio
+	url = https://github.com/tryashtar/nbt-studio
