@@ -5,6 +5,8 @@
     <TargetFramework>net6.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+	<PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 

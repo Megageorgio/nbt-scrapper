@@ -41,25 +41,37 @@ public partial class MainForm : Form
         extractButton.Enabled = false;
         var regionFiles = new List<string>();
         var playerFiles = new List<string>();
-        var regionPath = Path.Combine(inputPathTextBox.Text, "region");
-        if (Directory.Exists(regionPath))
-        {
-            regionFiles.AddRange(Directory.GetFiles(regionPath));
-        }
+        var path = inputPathTextBox.Text;
 
-        var entitiesPath = Path.Combine(inputPathTextBox.Text, "entities");
-        if (Directory.Exists(entitiesPath))
-        {
-            regionFiles.AddRange(Directory.GetFiles(entitiesPath));
-        }
-
-        var playerDataPath = Path.Combine(inputPathTextBox.Text, "playerdata");
-        if (Directory.Exists(playerDataPath))
-        {
-            playerFiles.AddRange(Directory.GetFiles(playerDataPath));
-        }
+        RecursiveFolderSearch(path);
 
         Task.Run(() => FindBooksAndSigns(regionFiles, playerFiles));
+
+        void RecursiveFolderSearch(string path)
+        {
+            var regionPath = Path.Combine(path, "region");
+            if (Directory.Exists(regionPath))
+            {
+                regionFiles.AddRange(Directory.GetFiles(regionPath));
+            }
+
+            var entitiesPath = Path.Combine(path, "entities");
+            if (Directory.Exists(entitiesPath))
+            {
+                regionFiles.AddRange(Directory.GetFiles(entitiesPath));
+            }
+
+            var playerDataPath = Path.Combine(path, "playerdata");
+            if (Directory.Exists(playerDataPath))
+            {
+                playerFiles.AddRange(Directory.GetFiles(playerDataPath));
+            }
+
+            foreach (var dir in Directory.GetDirectories(path))
+            {
+                RecursiveFolderSearch(dir);
+            }
+        }
     }
 
     private void FindBooksAndSigns(ICollection<string> regionFiles, ICollection<string> playerFiles)
@@ -110,6 +122,7 @@ public partial class MainForm : Form
                 var region = new RegionFile(file);
                 var j = 0;
                 var count = region.AllChunks.Count();
+
                 foreach (var chunk in region.AllChunks)
                 {
                     j++;
@@ -125,7 +138,7 @@ public partial class MainForm : Form
                         {
                             continue;
                         }
-                        
+
                         chunk.Load();
                         CyclicSearch(chunk.Data, SearchMethod);
                         chunk.Remove();
@@ -165,7 +178,7 @@ public partial class MainForm : Form
 
                     if (pages != null && pages.Count != 0)
                     {
-                        var text = "";
+                        var text = string.Empty;
                         foreach (var page in pages)
                         {
                             var isSnbt = SnbtParser.ClassicTryParse(page.StringValue, false, out var result);
@@ -180,9 +193,39 @@ public partial class MainForm : Form
 
                         hashes.Add(bookHash);
 
+                        NbtContainerTag inventory = null;
+                        NbtTag id = null;
+                        if (container.Parent is NbtCompound)
+                        {
+                            id = container.Parent?["id"];
+                            if (id != null)
+                            {
+                                inventory = container.Parent;
+                            }
+                            else if (container.Parent?.Parent is NbtCompound)
+                            {
+                                id = container.Parent?.Parent?["id"];
+                                if (id != null)
+                                {
+                                    inventory = container.Parent.Parent;
+                                }
+                            }
+                        }
+
+
+                        var coords = string.Empty;
+                        if (inventory?["x"] != null)
+                        {
+                            coords =
+                                $"at x:{inventory["x"].IntValue}, y:{inventory["y"].IntValue}, z:{inventory["z"].IntValue}";
+                        }
+
                         bookFileWriter.WriteLine("=====================================");
                         bookFileWriter.WriteLine(
                             $@"Book ""{(book["title"] == null ? "No name" : book["title"].StringValue)}"" by {(book["author"] == null ? "Unknown" : book["author"].StringValue)}");
+                        bookFileWriter.WriteLine($"(content hash = {Convert.ToHexString(bookHash)})");
+                        bookFileWriter.WriteLine(
+                            $"Found {container["Count"].ByteValue}x {tag.StringValue} in slot {(container["Slot"] == null ? "None" : container["Slot"].ByteValue)} {(id == null ? string.Empty : "of block entity " + id.StringValue)} {coords}");
                         bookFileWriter.WriteLine();
                         var i = 0;
                         foreach (var page in pages)
@@ -252,7 +295,7 @@ public partial class MainForm : Form
 
     private void CyclicSearch(NbtContainerTag rootTag, Action<NbtContainerTag, NbtTag> action)
     {
-        var stack = new ConcurrentStack<NbtContainerTag>();
+        var stack = new Stack<NbtContainerTag>();
         stack.Push(rootTag);
         while (stack.TryPop(out var container))
         {
@@ -267,7 +310,6 @@ public partial class MainForm : Form
                     }
                 }
             }
-                
         }
     }
 
