@@ -98,7 +98,7 @@ public partial class MainForm : Form
                 infoTextBox.InvokeIfRequired(() =>
                 {
                     infoTextBox.Text =
-                        $@"Players: {progressBar.Value}/{playerFiles.Count}\nSigns found: {signCount}\nBooks found: {bookCount}";
+                        $@"Players: {progressBar.Value}/{playerFiles.Count}{{Environment.NewLine}}Signs found: {signCount}{Environment.NewLine}Books found: {bookCount}";
                 });
                 CyclicSearch(playerData.RootTag as NbtContainerTag, SearchMethod);
                 GC.Collect();
@@ -166,7 +166,7 @@ public partial class MainForm : Form
         {
             if (tag.Name == "id")
             {
-                if (tag.StringValue is "minecraft:written_book" or "minecraft:writable_book")
+                if ((tag.TagType == NbtTagType.String && tag.StringValue is "minecraft:written_book" or "minecraft:writable_book") || (tag.TagType == NbtTagType.Short && tag.ShortValue is 386 or 387))
                 {
                     var book = container["tag"] as NbtCompound;
                     if (book == null)
@@ -182,7 +182,7 @@ public partial class MainForm : Form
                         foreach (var page in pages)
                         {
                             var isSnbt = SnbtParser.ClassicTryParse(page.StringValue, false, out var result);
-                            text += isSnbt ? result["text"].StringValue : page.StringValue;
+                            text += isSnbt && result.TagType != NbtTagType.String ? result["text"].StringValue : page.StringValue;
                         }
 
                         var bookHash = HashString(text);
@@ -232,7 +232,7 @@ public partial class MainForm : Form
                         {
                             bookFileWriter.WriteLine($"--- Page {i} ---");
                             var isSnbt = SnbtParser.ClassicTryParse(page.StringValue, false, out var result);
-                            bookFileWriter.WriteLine(isSnbt ? result["text"].StringValue : page.StringValue);
+                            bookFileWriter.WriteLine(isSnbt && page.TagType != NbtTagType.String ? result["text"].StringValue : page.StringValue);
                             i++;
                         }
                     }
@@ -241,21 +241,43 @@ public partial class MainForm : Form
                     return;
                 }
 
-                if (tag.StringValue is "minecraft:sign")
+                else if ((tag.TagType == NbtTagType.String && tag.StringValue is "minecraft:sign" or "Sign") || (tag.TagType == NbtTagType.Short && tag.ShortValue is 63 or 68))
                 {
                     var list = new[] { "Text1", "Text2", "Text3", "Text4" };
                     var rows = new List<string>();
                     foreach (var item in list)
                     {
-                        var row = SnbtParser.Parse(container[item].StringValue, false);
-                        var extra = row["extra"];
-                        if (extra != null)
+                        var isParsed = SnbtParser.ClassicTryParse(container[item].StringValue, false, out var row);
+                        if (!isParsed)
                         {
-                            rows.Add(extra[0]["text"].StringValue);
+                            rows.Add(string.Empty);
+                            continue;
+                        }
+                        else if (row.TagType == NbtTagType.String)
+                        {
+                            rows.Add(row.StringValue);
+                            continue;
+                        }
+                        var extra = row["extra"];
+                        if (extra?[0] != null)
+                        {
+                            if (extra[0].TagType == NbtTagType.String)
+                            {
+                                rows.Add(extra[0].StringValue);
+                            }
+                            else
+                            {
+                                rows.Add(extra[0]["text"].StringValue);
+                            }
+
+                        }
+                        else if (row["text"] != null)
+                        {
+                            rows.Add(row["text"].StringValue);
                         }
                         else
                         {
-                            rows.Add(row["text"].StringValue);
+                            rows.Add(string.Empty);
                         }
                     }
 
