@@ -98,7 +98,7 @@ public partial class MainForm : Form
                 infoTextBox.InvokeIfRequired(() =>
                 {
                     infoTextBox.Text =
-                        $@"Players: {progressBar.Value}/{playerFiles.Count}{{Environment.NewLine}}Signs found: {signCount}{Environment.NewLine}Books found: {bookCount}";
+                        $@"Players: {progressBar.Value}/{playerFiles.Count}{Environment.NewLine}Signs found: {signCount}{Environment.NewLine}Books found: {bookCount}";
                 });
                 CyclicSearch(playerData.RootTag as NbtContainerTag, SearchMethod);
                 GC.Collect();
@@ -232,7 +232,7 @@ public partial class MainForm : Form
                         {
                             bookFileWriter.WriteLine($"--- Page {i} ---");
                             var isSnbt = SnbtParser.ClassicTryParse(page.StringValue, false, out var result);
-                            bookFileWriter.WriteLine(isSnbt && page.TagType != NbtTagType.String ? result["text"].StringValue : page.StringValue);
+                            bookFileWriter.WriteLine(isSnbt && result.TagType != NbtTagType.String ? result["text"].StringValue : page.StringValue);
                             i++;
                         }
                     }
