@@ -243,41 +243,64 @@ public partial class MainForm : Form
 
                 else if ((tag.TagType == NbtTagType.String && tag.StringValue is "minecraft:sign" or "Sign") || (tag.TagType == NbtTagType.Short && tag.ShortValue is 63 or 68))
                 {
-                    var list = new[] { "Text1", "Text2", "Text3", "Text4" };
                     var rows = new List<string>();
-                    foreach (var item in list)
+
+                    var oldList = new[] { "Text1", "Text2", "Text3", "Text4" };
+                    if (oldList.All(key => container.GetAllTags().Any(t => t.Name == key)))
                     {
-                        var isParsed = SnbtParser.ClassicTryParse(container[item].StringValue, false, out var row);
-                        if (!isParsed)
+                        foreach (var item in oldList)
                         {
-                            rows.Add(string.Empty);
-                            continue;
-                        }
-                        else if (row.TagType == NbtTagType.String)
-                        {
-                            rows.Add(row.StringValue);
-                            continue;
-                        }
-                        var extra = row["extra"];
-                        if (extra?[0] != null)
-                        {
-                            if (extra[0].TagType == NbtTagType.String)
+                            var isParsed = SnbtParser.ClassicTryParse(container[item].StringValue, false, out var row);
+                            if (!isParsed)
                             {
-                                rows.Add(extra[0].StringValue);
+                                rows.Add(string.Empty);
+                                continue;
+                            }
+                            else if (row.TagType == NbtTagType.String)
+                            {
+                                rows.Add(row.StringValue);
+                                continue;
+                            }
+                            var extra = row["extra"];
+                            if (extra?[0] != null)
+                            {
+                                if (extra[0].TagType == NbtTagType.String)
+                                {
+                                    rows.Add(extra[0].StringValue);
+                                }
+                                else
+                                {
+                                    rows.Add(extra[0]["text"].StringValue);
+                                }
+
+                            }
+                            else if (row["text"] != null)
+                            {
+                                rows.Add(row["text"].StringValue);
                             }
                             else
                             {
-                                rows.Add(extra[0]["text"].StringValue);
+                                rows.Add(string.Empty);
+                            }
+                        }
+                    }
+
+                    var newList = new[] { "front_text", "back_text" };
+                    if (newList.All(key => container.GetAllTags().Any(t => t.Name == key)))
+                    {
+                        foreach (var item in newList)
+                        {
+                            var messagesList = container[item]["messages"] as NbtList;
+
+                            if (messagesList == null || messagesList.OfType<NbtString>().All(message => message.StringValue == @"""""" || message.StringValue == @""" """))
+                            {
+                                continue;
                             }
 
-                        }
-                        else if (row["text"] != null)
-                        {
-                            rows.Add(row["text"].StringValue);
-                        }
-                        else
-                        {
-                            rows.Add(string.Empty);
+                            foreach (NbtString message in messagesList)
+                            {
+                                rows.Add(message.StringValue.Substring(1, message.StringValue.Length - 2));
+                            }
                         }
                     }
 
